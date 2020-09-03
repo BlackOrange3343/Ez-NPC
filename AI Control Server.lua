@@ -8,6 +8,7 @@ This is for Humanoid NPC's.
 
 I'd appreciate credit <3
 
+Version: 0.01
 ]]
 
 --|| Services ||--
@@ -53,9 +54,9 @@ end
 
 local function isAlive(Model)
 	if Model and Model ~= nil  
-	and Model:FindFirstChild"Humanoid"
-	and Model:FindFirstChild"HumanoidRootPart"
-	and Model.Humanoid.Health > 0 then
+		and Model:FindFirstChild"Humanoid"
+		and Model:FindFirstChild"HumanoidRootPart"
+		and Model.Humanoid.Health > 0 then
 		return true
 	end
 end
@@ -111,9 +112,19 @@ local function GatherSpawnerData()
 	for _, Container in Ipairs(Directory:GetChildren()) do
 		Cache.SpawnerData[Container.Name] = {}
 		for _, Spawner in Ipairs(Container:GetChildren()) do
+			
+			local StartPosition = Spawner.Position
+			local EndPosition = StartPosition - Vector3.new(0,1000,0)
+			
+			local RaycastData = RaycastParams.new()
+			RaycastData.FilterDescendantsInstances = {Properties.NPC_SPAWNER_DIRECTORY}
+			RaycastData.FilterType = Enum.RaycastFilterType.Blacklist
+			local RaycastResult = game.Workspace:Raycast(StartPosition, (EndPosition - StartPosition).Unit * 1000)
+			local AdditionalHeight = (RaycastResult and (RaycastResult.Position - Spawner.Position).Magnitude or 0)
+			
 			Spawner.CanCollide = false -- Collision should be set to false
 			Cache.SpawnerData[Container.Name][Spawner] = {
-				LargestScale = Max(Spawner.Size.X,Spawner.Size.Y,Spawner.Size.Z), -- We'll use this to measure distance
+				LargestScale = Max(Spawner.Size.X,Spawner.Size.Y,Spawner.Size.Z)*2 + AdditionalHeight, -- We'll use this to measure distance
 				NPCS = {},	
 				LastUpdate = Clock(),
 			}
@@ -153,27 +164,48 @@ local function GatherExistingNPCS()
 end
 GatherExistingNPCS()
 
+local function ConnectRBXDeathSignals(NPC)
+	--| Death Event
+	local Death, AncestryChanged
+	Death = NPC.Model.Humanoid.HealthChanged:Connect(function(Health)
+		if Health <= 0 then
+			
+			Death:Disconnect()
+			Death = nil
+			
+			AncestryChanged:Disconnect()
+			AncestryChanged = nil
+			
+			NPC:Die()
+		end
+	end)
+	
+	AncestryChanged = NPC.Model.AncestryChanged:Connect(function(_, Parent)
+		if Parent == nil then
+			
+			AncestryChanged:Disconnect()
+			AncestryChanged = nil
+			
+			Death:Disconnect()
+			Death = nil
+			
+			NPC:Die()
+		end
+	end)
+end
+
 local function SpawnNPC(Spawner, Id, Amount)
 	for _ = 1, Amount do
 		local StartPosition = Spawner.Position
 		local RandomX, RandomZ = math.random(-Spawner.Size.X/2, Spawner.Size.X/2),math.random(-Spawner.Size.Z/2, Spawner.Size.Z/2) 
 		local RandomPoint = StartPosition + Vector3.new(RandomX,0,RandomZ)
 		
-		local EndPoint = RandomPoint - Vector3.new(0,1000,0)
-		local RaycastData = RaycastParams.new()
-		RaycastData.FilterDescendantsInstances = {Properties.NPC_SPAWNER_DIRECTORY}
-		RaycastData.FilterType = Enum.RaycastFilterType.Blacklist
-		local RaycastResult = game.Workspace:Raycast(RandomPoint, (EndPoint - RandomPoint).Unit * 1000)
+		local NewData = GetNewNPCData(Id, CFrame.new(RandomPoint) * CFrame.fromEulerAnglesXYZ(0,math.random(-360,360),0))
+		local NPC = AI_Handler.new(NewData)
 		
-		local Size, _ = Properties.NPC_STORAGE_DIRECTORY[Id]:GetBoundingBox()
-		
-		if RaycastResult then
-			--| Here we want to generate random points
-			local NewData = GetNewNPCData(Id, CFrame.new(RaycastResult.Position + Vector3.new(0,Size.Y/2,0)) * CFrame.fromEulerAnglesXYZ(0,math.random(-360,360),0))
-			local NPC = AI_Handler.new(NewData)
-			local NearestSpawner = getNearestSpawner(NPC.Id, NPC.CFrame.Position)
-			Cache.SpawnerData[NPC.Id][NearestSpawner].NPCS[#Cache.SpawnerData[NPC.Id][NearestSpawner].NPCS + 1] = NPC
-		end
+		ConnectRBXDeathSignals(NPC)
+		local NearestSpawner = getNearestSpawner(NPC.Id, NPC.CFrame.Position)
+		Cache.SpawnerData[NPC.Id][NearestSpawner].NPCS[#Cache.SpawnerData[NPC.Id][NearestSpawner].NPCS + 1] = NPC
 	end
 end
 
@@ -200,7 +232,6 @@ while true do
 					if isAlive(Player.Character) then
 						local InRange = false
 						if isWithinRange(Player.Character.HumanoidRootPart.Position, Spawner.Position, Data.LargestScale) then
-							
 							--| Display NPC's
 							for _, NPC in Ipairs(Data.NPCS) do
 								if isAlive(NPC.Model) then
@@ -213,13 +244,15 @@ while true do
 						
 						if not InRange then
 							for _, NPC in Ipairs(Data.NPCS) do
-								NPC.Model.Parent = ServerStorage
+								if isAlive(NPC.Model) then
+									NPC.Model.Parent = ReplicatedStorage
+								end	
 							end
 						end
 					end
 				end
 			end
-				
+			
 			--| NPC Behavior
 			for _, NPC in Ipairs(Data.NPCS) do
 				if isAlive(NPC.Model) and NPC.Model:IsDescendantOf(Properties.NPC_DIRECTORY) then
@@ -237,6 +270,8 @@ while true do
 									end
 								elseif isWithinRange(NearestEnemy.HumanoidRootPart.Position, NPC.Model.HumanoidRootPart.Position, Database[Id].ChaseRange) then
 									NPC:Chase(NearestEnemy)
+								else
+									
 								end
 							end						
 						end
