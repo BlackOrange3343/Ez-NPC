@@ -2,6 +2,10 @@
 local RunService = game:GetService("RunService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 PhysicsService:CreateCollisionGroup("Uncollideable NPCS")
 PhysicsService:CollisionGroupSetCollidable("Uncollideable NPCS", "Uncollideable NPCS", false)
@@ -15,7 +19,6 @@ local Clock = os.clock
 
 local NPC = {}
 local NPCS = {}
-
 NPC.__index = NPC
 
 local function SetCollisionGroup(Model, Group)
@@ -78,6 +81,7 @@ function CreateMiscData(Folder, Table)
 		if typeof(Value) ~= "table" then
 			local NewObject = Instance.new(DataValuesToObject[typeof(Value)])
 			NewObject.Name = Index
+			NewObject.Value = Value
 			NewObject.Parent = Folder
 		else
 			local NewFolder = Instance.new("Folder")
@@ -88,14 +92,16 @@ function CreateMiscData(Folder, Table)
 	end
 end
 
-function LoadAnimationFromTable(Humanoid, Animation, Table1, AnimTable)
+function LoadAnimationFromTable(Humanoid, Table1, AnimTable)
 	for Index, Value in next, AnimTable do
 		if typeof(Value) == "table" then
 			Table1[Index] = {}
-			LoadAnimationFromTable(Humanoid, Animation, Table1[Index], Value)
+			LoadAnimationFromTable(Humanoid, Table1[Index], Value)
 		else
+			local Animation = Instance.new("Animation")
 			Animation.AnimationId = Value
-			Table1[Index] = Humanoid:LoadAnimation(Animation)			
+			Table1[Index] = Humanoid:LoadAnimation(Animation)	
+			Animation:Destroy()
 		end	
 	end
 end
@@ -128,9 +134,10 @@ local function CreateNPCModel(Data)
 			Humanoid:SetStateEnabled(State, Value)
 		end
 		
-		for Property, Value in ipairs(Database[Id].HumanoidProperties) do
+		for Property, Value in next,Database[Id].HumanoidProperties do
 			Humanoid[Property] = Value
 		end
+		Humanoid.Health = Humanoid.MaxHealth
 	end
 	
 	if not RandomNPC.PrimaryPart then
@@ -138,29 +145,10 @@ local function CreateNPCModel(Data)
 	else
 		RandomNPC:SetPrimaryPartCFrame(SpawnCFrame)
 	end
-	
-	--| Death Event
-	local Death, AncestryChanged
-	Death = RandomNPC.Humanoid.Died:Connect(function()
-		Death:Disconnect()
-		Death = nil
-		NPC:Die()
-	end)
-	
-	AncestryChanged = RandomNPC.AncestryChanged:Connect(function(_, Parent)
-		if Parent == nil then
-			AncestryChanged:Disconnect()
-			AncestryChanged = nil
-			NPC:Die()
-		end
-	end)
-	RandomNPC.Parent = Properties.NPC_DIRECTORY
+	RandomNPC.Parent = ReplicatedStorage
 	
 	--| Load Animations
-	local Animation = Instance.new("Animation")
-	Animation.AnimationId = ""
-	LoadAnimationFromTable(Humanoid, Animation, Data.Animations, Database[Id].Animations)
-	Animation:Destroy()
+	LoadAnimationFromTable(Humanoid, Data.Animations, Database[Id].Animations)
 	
 	--| Play Idle
 	Data.Animations.Idle:Play()
@@ -179,23 +167,59 @@ function NPC:Die()
 		Database[self.Id].Die(self.Model)
 	end
 	
-	Halt(1) 
+	Halt(1)
 	self.Model:Destroy()
-	self:Respawn()	
+	NPC.Respawn(self)
 end
 
 function NPC:Respawn()
 	Halt(Database[self.Id].RespawnTime)
 	local NewModel = CreateNPCModel(self)
-	self.Model = NewModel	
+	self.Model = NewModel
+	self.Animations.Idle:Play()
+	
+	--| Death Event
+	local Death, AncestryChanged
+	Death = self.Model.Humanoid.HealthChanged:Connect(function(Health)
+		if Health <= 0 then
+			
+			Death:Disconnect()
+			Death = nil
+			
+			AncestryChanged:Disconnect()
+			AncestryChanged = nil
+			
+			self:Die()
+		end
+	end)
+	
+	AncestryChanged = self.Model.AncestryChanged:Connect(function(_, Parent)
+		if Parent == nil then
+			
+			AncestryChanged:Disconnect()
+			AncestryChanged = nil
+			
+			Death:Disconnect()
+			Death = nil
+			
+			self:Die()
+		end
+	end)
 end
 
 function NPC:Attack(Target)
 	if Database[self.Id].Attack then
 		Database[self.Id].Attack(self.Model, Target)
 	else
+		
+		for i = 0, 1, 0.1 do
+			self.Model.HumanoidRootPart.CFrame = self.Model.HumanoidRootPart.CFrame:Lerp(CFrame.new(self.Model.HumanoidRootPart.Position, Vector3.new(Target.HumanoidRootPart.Position.X,self.Model.HumanoidRootPart.Position.Y,Target.HumanoidRootPart.Position.Z)), i)
+			RunService.Stepped:Wait()
+		end
+		
 		if Target:FindFirstChild"Humanoid" then
 			Target.Humanoid:TakeDamage(Database[self.Id].AttackDamage)
+			-- If you have a Damage API you can use that instead of line above			
 		end
 		
 		if Database[self.Id].RandomAttack then
