@@ -3,8 +3,7 @@ local Database = {
 		HumanoidProperties = { -- Put any humanoid properties you want set in here
 			WalkSpeed = 18,
 			JumpPower = 50,
-			MaxHealth = 500, -- Make sure to put MaxHealth before Health
-			Health = 500,
+			MaxHealth = 500, 
 		},
 		
 		MiscData = { -- This is data for your own game
@@ -17,7 +16,7 @@ local Database = {
 		ChaseRange = 50,
 		AttackDamage = 10,
 		RespawnTime = 10,
-		PassiveAgressive = true,
+		PassiveAgressive = false,
 		Quantity = 10, -- Per Spawner
 		Animations = {
 			Idle = "rbxassetid://05051775001",
