@@ -28,6 +28,8 @@ local Properties = {
 	NPC_COLLISION = false, -- This is preferred on false
 	PLAYER_COLLISION = false, -- This is preferred on false
 	
+	NPC_CAN_JUMP = true,
+	
 	HUMANOID_STATES = { -- Put humanoid states you don't want in here
 		--[Enum.HumanoidStateType.Climbing] = true,
 		--[Enum.HumanoidStateType.Dead] = true,
