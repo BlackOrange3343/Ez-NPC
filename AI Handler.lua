@@ -63,6 +63,14 @@ local function GroupLikeNPCS()
 		NPCS[NPC] = {}
 		for _, Child in ipairs(Directory:GetChildren()) do
 			if NPC == Child.Name then
+				
+				local BodyGyro = Instance.new("BodyGyro")
+				BodyGyro.MaxTorque = Vector3.new(0,0,0)
+				BodyGyro.Name = "Rotater"
+				BodyGyro.D = 200
+				BodyGyro.P = 9000
+				BodyGyro.Parent = Child.HumanoidRootPart
+				
 				NPCS[NPC][#NPCS[NPC] + 1] = Child
 			end
 		end
@@ -212,14 +220,11 @@ function NPC:Attack(Target)
 		Database[self.Id].Attack(self.Model, Target)
 	else
 		
-		for i = 0, 1, 0.1 do
-			self.Model.HumanoidRootPart.CFrame = self.Model.HumanoidRootPart.CFrame:Lerp(CFrame.new(self.Model.HumanoidRootPart.Position, Vector3.new(Target.HumanoidRootPart.Position.X,self.Model.HumanoidRootPart.Position.Y,Target.HumanoidRootPart.Position.Z)), i)
-			RunService.Stepped:Wait()
-		end
+		self.Model.HumanoidRootPart.Rotater.CFrame = CFrame.new(self.Model.HumanoidRootPart.Position, Target.HumanoidRootPart.Position)
+		self.Model.HumanoidRootPart.Rotater.MaxTorque = Vector3.new(0,1,1) * 500000
 		
 		if Target:FindFirstChild"Humanoid" then
 			Target.Humanoid:TakeDamage(Database[self.Id].AttackDamage)
-			-- If you have a Damage API you can use that instead of line above			
 		end
 		
 		if Database[self.Id].RandomAttack then
@@ -242,6 +247,20 @@ function NPC:Chase(Target)
 	local Direction = (EndGoal - StartPosition).Unit
 	local NewEndGoal = EndGoal + Direction * Database[self.Id].AttackDistance/2
 	self.Model.Humanoid:MoveTo(NewEndGoal, Target.HumanoidRootPart)
+	
+	self.Model.HumanoidRootPart.Rotater.MaxTorque = Vector3.new(0,0,0)
+	
+	if Properties.NPC_CAN_JUMP then
+		local RayData = RaycastParams.new()
+		RayData.FilterDescendantsInstances = {Properties.NPC_DIRECTORY}
+		RayData.FilterType = Enum.RaycastFilterType.Blacklist
+		local Orgin = self.Model.HumanoidRootPart.Position
+		local End = (self.Model.HumanoidRootPart.CFrame * CFrame.new(0,0,-5)).Position
+		local Result = game.Workspace:Raycast(Orgin, (End - Orgin).Unit * 5, RayData)
+		if Result then
+			self.Model.Humanoid.Jump = true
+		end
+	end
 	
 	if not self.Animations.Chase.IsPlaying then
 		self.Animations.Chase:Play()
