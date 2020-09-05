@@ -8,7 +8,7 @@ This is for Humanoid NPC's.
 
 I'd appreciate credit <3
 
-Version: 0.01
+Version: 0.02
 ]]
 
 --|| Services ||--
