@@ -1,43 +1,55 @@
-local Database = {
-	Dummy = {
-		HumanoidProperties = { -- Put any humanoid properties you want set in here
-			WalkSpeed = 18,
-			JumpPower = 50,
-			MaxHealth = 500, 
-		},
-		
-		MiscData = { -- This is data for your own game
+local module = {}
 
-		},
+module.Dummy = {
+	--| Stats	
+	Health = 100,
+	WalkSpeed = 16,
+	JumpPower = 50,
+	
+	--| Damage Data
+	Damage = 10,
+	AttackSpeed = 1,
+	AttackRange = 3,
+	
+	--| Agression Chase Behavior;
+	Agressive = false, 
+	SeekRange = 30, -- In Studs,
+	
+	--| Animations
+	Animations = {
+		Idle = "rbxassetid://5051775001",
+		Walk = "rbxassetid://5051979913",
+		Attack = {"rbxassetid://5153989112", "rbxassetid://5153964818", "rbxassetid://5134956506", "rbxassetid://5153991114"},
+	}, -- Feel free to add more, however, the default ones must stay
+	AttackSequence = "RNG", -- RNG or LIST, RNG by Default.
+	
+	--| Other Data
+	CastShadow = true, -- Want to create shadows or not, good for optimization
+	NPCHideRange = 150, -- For Optimization, you can specifiy specific hie ranges for spawners below;
+	SpecifiedHideRange = {}, -- same as specified quantity
+	RespawnTime = 10,
+	Quantity = 2, -- Quantity Per Spawner;
+	SpecifiedQuantity = {}, --[[ Specify quantity for specific spawners.
+		SpecifiedQuantity = {
+			[game.Workspace.Spawners.Dummy.SpawnerNearForest] = 20, -- Exaample
+		}
+	]]
+	Data = {
+		Example = "Hi!",
+		StackedExampled = {
+			StatsBro = 5,
+			ACFrame = CFrame.new(0,0,0),
+		}
+	}, -- Additional Information Can Be Provided;
+	ObjectifyData = true, -- If True, will create a folder with data within the npc, else refer to tables.
+	
+	--| Additional Customization
+	--Attack = function()
 		
-		--| Other Essential Data
-		AttackDistance = 5,
-		AttackCooldown = 1,
-		ChaseRange = 50,
-		AttackDamage = 10,
-		RespawnTime = 10,
-		PassiveAgressive = false,
-		Quantity = 10, -- Per Spawner
-		Animations = {
-			Idle = "rbxassetid://05051775001",
-			Chase = "rbxassetid://05051979913",
-			Attack = {"rbxassetid://5153989112", "rbxassetid://5153964818", "rbxassetid://5134956506", "rbxassetid://5153991114"},
-		},
-		RandomAttack = false, -- If false it will iterate in order
+	--end,
+	--Death = function()
 		
-		--[[
-		
-		If you want a custom attack function list make a index called Attack with a function
-		
-		]]
-		--Attack = function(NPC, Target) -- This would have custom attack
-			
-		--end,
-		--Die = function(NPC) -- This would have a custom death
-			
-		--end,
-		
-	}
+	--end,
 }
 
-return Database
+return module
